@@ -14,20 +14,20 @@ services:
     environment:
       # Listen on all interfaces for remote connections
       AW_SERVER_HOST: 0.0.0.0
-      AW_SERVER_PORT: 5601
+      AW_SERVER_PORT: 5603
       # Optional: Set log level
       AW_LOG_LEVEL: info
       # Optional: API key for authentication (recommended for production)
       # Uncomment and set in .env file:
       # AW_SERVER_API_KEY: ${AW_SERVER_API_KEY}
     ports:
-      - "${AW_SERVER_PORT:-5601}:${AW_SERVER_PORT:-5601}"
+      - "${AW_SERVER_PORT:-5603}:${AW_SERVER_PORT:-5603}"
     volumes:
       # Persist data across container restarts
       - aw-data:/data
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "timeout 5 bash -c 'exec 3<>/dev/tcp/localhost/5601 && echo HEALTH' || exit 1"]
+      test: ["CMD-SHELL", "timeout 5 bash -c 'exec 3<>/dev/tcp/localhost/5603 && echo HEALTH' || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -65,38 +65,53 @@ volumes:
 # Quick Start:
 # ============
 #
-# 1. Build the image:
+# 1. Build the services:
 #    docker compose -f docker-compose.remote.yml build
 #
-# 2. Start the server:
+# 2. Start the services:
 #    docker compose -f docker-compose.remote.yml up -d
 #
 # 3. Check logs:
 #    docker compose -f docker-compose.remote.yml logs -f aw-server-remote
 #
 # 4. Verify API is running:
-#    curl http://localhost:5600/api/
+#    curl http://localhost:5603/api/
 #
 # 5. Connect a remote client:
 #    export AW_SERVER_HOST=your.server.com
-#    export AW_SERVER_PORT=5600
+#    export AW_SERVER_PORT=5603
 #    export AW_SERVER_API_KEY=your_api_key
 #    aw-client heartbeat bucket_name '{"data":"value"}'
 #
 # 6. Stop the server:
 #    docker compose -f docker-compose.remote.yml down
 #
-# Accessing the Web UI (Optional):
-# =================================
+# Accessing the Web UI:
+# ====================
 #
-# Option A: Use aw-webui from your machine
+# This Docker deployment provides the API server only.
+# Access the web UI using one of these methods:
+#
+# Option A: Desktop Clients (Recommended for quick access)
+#   - aw-qt: Qt-based desktop client with built-in web UI
+#   - aw-tauri: Lightweight Tauri-based client
+#   Configure them to point to this server:
+#     AW_SERVER_HOST=your.server.com
+#     AW_SERVER_PORT=5603
+#
+# Option B: Development Web UI (on your local machine)
 #   1. Clone aw-webui: git clone https://github.com/ActivityWatch/aw-webui.git
-#   2. Configure proxy to point to this server (edit aw-webui config)
-#   3. Run: npm run serve (from aw-webui directory)
-#   4. Open http://localhost:8080
+#   2. cd aw-webui && npm install
+#   3. Set API endpoint and run development server:
+#      AW_SERVER_URL="'http://your.server.com:5603'" npm run serve
+#   4. Open http://localhost:8080 in your browser
+#      (browser will connect to the remote server)
 #
-# Option B: Use aw-qt or aw-cli (desktop clients)
-#   These connect directly to the server and don't require a web UI
+# Option C: Production Web UI (served separately)
+#   1. Build aw-webui: npm run build
+#   2. Serve dist/ folder via Nginx or another web server
+#   3. Configure CORS on this server or use reverse proxy
+#   4. Point the web UI to this server's API endpoint
 #
 # Production Recommendations:
 # ===========================
@@ -112,12 +127,12 @@ volumes:
 #
 # Port Mapping:
 # =============
-# API Server:    http://localhost:5600  (internal: 5600)
+# API Server:    http://localhost:5603  (internal: 5603)
 # Nginx Proxy:   https://your.domain    (optional, recommended for production)
 #
 # Example .env file:
 # ===================
 # AW_SERVER_HOST=0.0.0.0
-# AW_SERVER_PORT=5600
+# AW_SERVER_PORT=5601
 # AW_SERVER_API_KEY=your_strong_api_key_here
 # AW_LOG_LEVEL=info
