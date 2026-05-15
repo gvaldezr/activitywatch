@@ -1,0 +1,86 @@
+# Multi-stage Dockerfile for ActivityWatch Remote Server
+# Production-ready image for aw-server-rust with environment variable support
+
+FROM rust:latest as builder
+
+WORKDIR /build
+
+# Copy the entire repository
+COPY . .
+
+# Build only the Rust server
+RUN cd aw-server-rust && \
+    cargo build --release && \
+    cargo build --release -p aw-server
+
+# Final stage - minimal runtime image
+FROM debian:bookworm-slim
+
+WORKDIR /app
+
+# Install runtime dependencies
+RUN apt-get update && apt-get install -y \
+    libssl3 \
+    ca-certificates \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy the compiled server from builder
+COPY --from=builder /build/target/release/aw-server /app/
+COPY --from=builder /build/aw-server-rust/target/release/aw-server-rust /app/
+
+# Create non-root user
+RUN useradd -m -u 1000 activitywatch && \
+    chown -R activitywatch:activitywatch /app
+
+USER activitywatch
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:${AW_SERVER_PORT:-5600}/api/ || exit 1
+
+# Expose default port
+EXPOSE 5600
+
+# Environment variables with defaults
+ENV AW_SERVER_HOST=0.0.0.0 \
+    AW_SERVER_PORT=5600 \
+    AW_LOG_LEVEL=info
+
+# Volume for data persistence
+VOLUME ["/data"]
+
+# Data directory
+ENV AW_DATA_DIR=/data
+
+# Entrypoint script
+COPY --chown=activitywatch:activitywatch <<EOF /app/entrypoint.sh
+#!/bin/bash
+set -e
+
+echo "ActivityWatch Remote Server"
+echo "============================"
+echo ""
+echo "Configuration:"
+echo "  Host: ${AW_SERVER_HOST}"
+echo "  Port: ${AW_SERVER_PORT}"
+echo "  Log Level: ${AW_LOG_LEVEL}"
+echo "  Data Directory: ${AW_DATA_DIR}"
+echo ""
+
+# Create data directory if it doesn't exist
+mkdir -p "${AW_DATA_DIR}"
+
+# Run the server
+exec /app/aw-server-rust
+EOF
+
+RUN chmod +x /app/entrypoint.sh
+
+ENTRYPOINT ["/app/entrypoint.sh"]
+
+# Labels
+LABEL maintainer="ActivityWatch Contributors" \
+      version="1.0" \
+      description="ActivityWatch Privacy-focused Time Tracker - Remote Server" \
+      org.opencontainers.image.source="https://github.com/ActivityWatch/activitywatch"
