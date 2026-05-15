@@ -14,20 +14,20 @@ services:
     environment:
       # Listen on all interfaces for remote connections
       AW_SERVER_HOST: 0.0.0.0
-      AW_SERVER_PORT: 5600
+      AW_SERVER_PORT: 5601
       # Optional: Set log level
       AW_LOG_LEVEL: info
       # Optional: API key for authentication (recommended for production)
       # Uncomment and set in .env file:
       # AW_SERVER_API_KEY: ${AW_SERVER_API_KEY}
     ports:
-      - "${AW_SERVER_PORT:-5600}:${AW_SERVER_PORT:-5600}"
+      - "${AW_SERVER_PORT:-5601}:${AW_SERVER_PORT:-5601}"
     volumes:
       # Persist data across container restarts
       - aw-data:/data
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "timeout 5 bash -c 'exec 3<>/dev/tcp/localhost/5600 && echo HEALTH' || exit 1"]
+      test: ["CMD-SHELL", "timeout 5 bash -c 'exec 3<>/dev/tcp/localhost/5601 && echo HEALTH' || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -74,7 +74,7 @@ volumes:
 # 3. Check logs:
 #    docker compose -f docker-compose.remote.yml logs -f aw-server-remote
 #
-# 4. Verify server is running:
+# 4. Verify API is running:
 #    curl http://localhost:5600/api/
 #
 # 5. Connect a remote client:
@@ -85,6 +85,18 @@ volumes:
 #
 # 6. Stop the server:
 #    docker compose -f docker-compose.remote.yml down
+#
+# Accessing the Web UI (Optional):
+# =================================
+#
+# Option A: Use aw-webui from your machine
+#   1. Clone aw-webui: git clone https://github.com/ActivityWatch/aw-webui.git
+#   2. Configure proxy to point to this server (edit aw-webui config)
+#   3. Run: npm run serve (from aw-webui directory)
+#   4. Open http://localhost:8080
+#
+# Option B: Use aw-qt or aw-cli (desktop clients)
+#   These connect directly to the server and don't require a web UI
 #
 # Production Recommendations:
 # ===========================
@@ -97,6 +109,11 @@ volumes:
 # 6. Use strong API keys (e.g., generated with: openssl rand -base64 32)
 # 7. Monitor logs regularly
 # 8. Keep ActivityWatch updated for security patches
+#
+# Port Mapping:
+# =============
+# API Server:    http://localhost:5600  (internal: 5600)
+# Nginx Proxy:   https://your.domain    (optional, recommended for production)
 #
 # Example .env file:
 # ===================
